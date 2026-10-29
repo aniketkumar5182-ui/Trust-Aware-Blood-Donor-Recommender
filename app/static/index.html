@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrustBlood - Emergency Donor Recommender</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#fff; --surface-2:#f0f2f5; --text:#16181d; --muted:#667085; --line:#e4e7ec;
+    --brand:#d92d3a; --brand-ink:#fff; --ok:#12805c; --warn:#b54708; --danger:#b42318;
+    --c-rel:#7c5cff; --c-av:#1fa971; --c-prox:#2f8cf0; --c-comp:#f5a524; --c-elig:#98a2b3;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08); --radius:12px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#eef0f4; --muted:#98a2b3; --line:#2a2f3a;
+      --brand:#ef4452; --ok:#3ddc97; --warn:#fdb022; --danger:#f97066; --shadow:none; }
+  }
+  *{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em}
+  .logo svg{width:26px;height:26px;fill:var(--brand)}
+  .logo small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:-3px}
+  .spacer{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--surface-2);font-size:12.5px;color:var(--muted);border:1px solid var(--line)}
+  .chip b{color:var(--text)}
+  button,select,input,textarea{font:inherit;color:inherit}
+  button{cursor:pointer;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:9px;transition:background .12s,transform .05s}
+  button:hover{background:var(--surface-2)} button:active{transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{background:var(--brand);color:var(--brand-ink);border-color:transparent;font-weight:600}
+  button.primary:hover{filter:brightness(1.07)}
+  button.ghost{background:transparent} button.small{padding:4px 10px;font-size:13px}
+  button.good{background:var(--ok);color:#fff;border-color:transparent}
+  button.bad{color:var(--danger)}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);margin-top:4px}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+  input[type=checkbox]{width:auto;margin:0 8px 0 0} input[type=range]{padding:0;border:0}
+  label{display:block;font-size:13px;color:var(--muted);margin-top:10px}
+  .row{display:flex;gap:10px} .row>*{flex:1;min-width:0}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:16px} .card h3{margin:0;font-size:14px}
+  .hint{color:var(--muted);font-size:13px;margin:2px 0 0}
+  .layout{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px;max-width:1280px;margin:20px auto;padding:0 16px;align-items:start}
+  .single{max-width:760px;margin:20px auto;padding:0 16px}
+  .auth{max-width:420px;margin:56px auto;padding:0 16px}
+  @media(max-width:920px){.layout{grid-template-columns:1fr}}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:4px}
+  .seg button{flex:1;border:0;border-radius:0;background:var(--surface)} .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--brand);color:var(--brand-ink);font-weight:600}
+  .tabs{display:flex;gap:6px;margin-bottom:12px} .tabs button{flex:1}
+  .tabs button.on{background:var(--text);color:var(--bg);border-color:transparent}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;justify-content:space-between}
+  .toolbar .grp{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+  .toolbar label{margin:0}
+  .toolbar select{width:auto}
+  .funnel{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted);margin:8px 0}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+  .rec{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:14px 4px;border-top:1px solid var(--line);align-items:start}
+  .rec:first-of-type{border-top:0}
+  .rank{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--surface-2)}
+  .rec.top .rank{background:var(--brand);color:var(--brand-ink)}
+  .badge{display:inline-block;padding:1px 8px;border-radius:6px;background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand);font-weight:700;font-size:12.5px;margin-left:6px}
+  .name{font-weight:600}
+  .meta{color:var(--muted);font-size:13px}
+  .bar{display:flex;height:9px;border-radius:5px;background:var(--surface-2);overflow:hidden;margin:8px 0 6px}
+  .bar span{display:block;height:100%}
+  .score{font-size:20px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+  .score small{display:block;font-size:11.5px;font-weight:400;color:var(--muted)}
+  .reasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .reasons span{font-size:12.5px;background:var(--surface-2);padding:2px 8px;border-radius:6px}
+  details summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:6px}
+  .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 14px;font-size:12.5px;margin-top:6px;color:var(--muted)}
+  .kv b{color:var(--text);font-variant-numeric:tabular-nums}
+  .actionbar{position:sticky;bottom:0;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--surface);border-top:1px solid var(--line);padding:12px 4px 0;margin-top:6px}
+  .req{padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-top:8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .req:hover,.req.on{border-color:var(--brand)} .req small{color:var(--muted)}
+  .pill{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line)}
+  .pill.open{color:var(--warn)} .pill.fulfilled{color:var(--ok)} .pill.closed{color:var(--muted)}
+  .urg-critical{color:var(--danger);font-weight:600} .urg-urgent{color:var(--warn);font-weight:600}
+  .note{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+  .note:first-of-type{border-top:0}
+  .status-yes{color:var(--ok);font-weight:600}.status-no{color:var(--danger);font-weight:600}.status-wait{color:var(--warn)}
+  .empty{text-align:center;color:var(--muted);padding:36px 12px}
+  .error{color:var(--danger);font-size:13.5px;margin-top:8px;min-height:1em}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+  #toast.show{opacity:1}
+  .disclaimer{font-size:12.5px;color:var(--muted);text-align:center;margin:28px auto 36px;max-width:720px;padding:0 16px}
+  pre{background:var(--surface-2);padding:10px;border-radius:9px;overflow:auto;font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c-.3 0-.6.2-.8.4C9 5.2 4.8 9.8 4.8 14.2a7.2 7.2 0 0 0 14.4 0c0-4.4-4.2-9-6.4-11.6-.2-.2-.5-.4-.8-.4z"/></svg>
+    <div>TrustBlood<small>Trust-aware emergency donor recommendation</small></div>
+  </div>
+  <div class="spacer"></div>
+  <div id="userbox"></div>
+</header>
+<div id="app"></div>
+<p class="disclaimer">Academic prototype. Rankings support coordination only - final medical eligibility and transfusion decisions rest with authorised healthcare personnel. Demo donors are synthetic.</p>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const CITIES = {
+  "Greater Noida": [28.4744, 77.5040], "Noida": [28.5355, 77.3910], "New Delhi": [28.6139, 77.2090],
+  "Ghaziabad": [28.6692, 77.4538], "Gurugram": [28.4595, 77.0266], "Faridabad": [28.4089, 77.3178],
+};
+const GROUPS = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
+const COMP = [
+  ["reliability", "Reliability", "var(--c-rel)"], ["availability", "Availability", "var(--c-av)"],
+  ["proximity", "Proximity", "var(--c-prox)"], ["compatibility", "Compatibility", "var(--c-comp)"],
+  ["eligibility", "Eligibility margin", "var(--c-elig)"],
+];
+
+let token = sessionStorage.getItem("tb_token");
+let me = JSON.parse(sessionStorage.getItem("tb_me") || "null");
+const S = { request: null, rec: null, selected: new Set(), notes: [], names: {}, mode: "auto", topK: 10, requests: [] };
+
+// ------------------------------------------------------------------ helpers
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 3200);
+}
+function errText(data, fallback) {
+  if (!data) return fallback;
+  if (typeof data.detail === "string") return data.detail;
+  if (Array.isArray(data.detail)) return data.detail.map(d => `${(d.loc || []).slice(1).join(".")}: ${d.msg}`).join("; ");
+  return fallback;
+}
+async function api(path, { method = "GET", body } = {}) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (token) headers.Authorization = "Bearer " + token;
+  const res = await fetch(path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined });
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    if (res.status === 401 && token) { logout(); }
+    throw new Error(errText(data, res.statusText));
+  }
+  return data;
+}
+function setSession(t) {
+  token = t.access_token; me = { role: t.role, name: t.name };
+  sessionStorage.setItem("tb_token", token); sessionStorage.setItem("tb_me", JSON.stringify(me));
+}
+function logout() {
+  token = null; me = null; sessionStorage.clear();
+  Object.assign(S, { request: null, rec: null, selected: new Set(), notes: [], names: {}, requests: [] });
+  render();
+}
+function cityOptions(sel) {
+  return `<option value="">Pick a city preset...</option>` +
+    Object.keys(CITIES).map(c => `<option ${c === sel ? "selected" : ""}>${esc(c)}</option>`).join("");
+}
+function bindCityPreset(form) {
+  $("[name=cityPreset]", form).addEventListener("change", e => {
+    const c = CITIES[e.target.value]; if (!c) return;
+    form.elements.lat.value = c[0]; form.elements.lon.value = c[1]; form.elements.city.value = e.target.value;
+  });
+  const geo = $("[data-geo]", form);
+  if (geo) geo.addEventListener("click", () => {
+    if (!navigator.geolocation) return toast("Geolocation is not available in this browser");
+    navigator.geolocation.getCurrentPosition(p => {
+      form.elements.lat.value = p.coords.latitude.toFixed(4); form.elements.lon.value = p.coords.longitude.toFixed(4); toast("Location filled in");
+    }, () => toast("Could not read your location"));
+  });
+}
+const pct = v => Math.round(v * 100) + "%";
+
+// ------------------------------------------------------------------ shell
+function render() {
+  $("#userbox").innerHTML = me
+    ? `<span class="chip"><b>${esc(me.name)}</b> &middot; ${esc(me.role)}</span> <button class="small ghost" id="logoutBtn">Log out</button>` : "";
+  if (me) $("#logoutBtn").onclick = logout;
+  if (!me) return authView();
+  if (me.role === "donor") return donorView();
+  return staffView();
+}
+
+// ------------------------------------------------------------------ auth
+function authView() {
+  $("#app").innerHTML = `<div class="auth"><div class="card">
+    <div class="tabs"><button class="on" data-tab="login">Log in</button><button data-tab="register">Register as donor</button></div>
+    <form id="authForm" autocomplete="on">
+      <div id="nameRow" hidden><label>Full name<input name="name" autocomplete="name"></label></div>
+      <label>Email<input name="email" type="email" required autocomplete="email"></label>
+      <label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
+      <p class="hint" id="authHint">Hospital and admin accounts are created by an administrator.</p>
+      <button class="primary" style="width:100%;margin-top:14px" id="authBtn">Log in</button>
+      <div class="error" id="authErr" role="alert"></div>
+    </form></div></div>`;
+  let mode = "login";
+  $$(".tabs button").forEach(b => b.onclick = () => {
+    mode = b.dataset.tab; $$(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+    $("#nameRow").hidden = mode === "login"; $("#authBtn").textContent = mode === "login" ? "Log in" : "Create donor account";
+    $("[name=name]").required = mode === "register"; $("#authErr").textContent = "";
+  });
+  $("#authForm").onsubmit = async e => {
+    e.preventDefault(); const f = e.target; $("#authErr").textContent = "";
+    try {
+      const body = { email: f.elements.email.value.trim(), password: f.elements.password.value };
+      if (mode === "register") body.name = f.elements.name.value.trim();
+      setSession(await api(mode === "login" ? "/auth/login" : "/auth/register", { method: "POST", body }));
+      render();
+    } catch (err) { $("#authErr").textContent = err.message; }
+  };
+}
+
+// ------------------------------------------------------------------ staff (hospital / admin)
+function staffView() {
+  $("#app").innerHTML = `<div class="layout">
+    <aside>
+      <section class="card"><h2>New emergency request</h2>
+        <p class="hint">Compatible, eligible donors are ranked by trust score.</p>
+        <form id="reqForm">
+          <label>Hospital / blood bank<input name="hospital_name" required maxlength="160" value="${esc(me.name)}"></label>
+          <div class="row">
+            <label>Patient blood group<select name="patient_blood_group">${GROUPS.map(g => `<option>${g}</option>`).join("")}</select></label>
+            <label>Units needed<input name="units_needed" type="number" min="1" max="20" value="1"></label>
+          </div>
+          <label>Urgency</label>
+          <div class="seg" id="urgSeg">${["normal", "urgent", "critical"].map((u, i) => `<button type="button" data-u="${u}" class="${i === 0 ? "on" : ""}">${u}</button>`).join("")}</div>
+          <label>Location</label>
+          <select name="cityPreset">${cityOptions("Greater Noida")}</select>
+          <div class="row"><label>Latitude<input name="lat" type="number" step="any" required value="28.4744"></label>
+            <label>Longitude<input name="lon" type="number" step="any" required value="77.5040"></label></div>
+          <input type="hidden" name="city" value="Greater Noida">
+          <button type="button" class="small ghost" data-geo style="margin-top:8px">Use my current location</button>
+          <label>Search radius: <b id="radVal">50</b> km<input name="max_radius_km" type="range" min="5" max="150" step="5" value="50"></label>
+          <label>Notes (optional)<textarea name="notes" rows="2" maxlength="500"></textarea></label>
+          <button class="primary" style="width:100%;margin-top:14px">Find donors</button>
+          <div class="error" id="reqErr" role="alert"></div>
+        </form></section>
+      <section class="card"><h2>My requests</h2><div id="reqList"><p class="hint">Loading...</p></div></section>
+      ${me.role === "admin" ? adminCard() : ""}
+    </aside>
+    <main id="results"><div class="card empty">Create a request to see ranked donors.</div></main>
+  </div>`;
+  const f = $("#reqForm"); bindCityPreset(f);
+  let urgency = "normal";
+  $$("#urgSeg button").forEach(b => b.onclick = () => { urgency = b.dataset.u; $$("#urgSeg button").forEach(x => x.classList.toggle("on", x === b)); });
+  f.elements.max_radius_km.oninput = () => $("#radVal").textContent = f.elements.max_radius_km.value;
+  f.onsubmit = async e => {
+    e.preventDefault(); $("#reqErr").textContent = "";
+    try {
+      const body = {
+        hospital_name: f.elements.hospital_name.value.trim(), patient_blood_group: f.elements.patient_blood_group.value,
+        units_needed: +f.elements.units_needed.value, urgency, lat: +f.elements.lat.value, lon: +f.elements.lon.value, city: f.elements.city.value,
+        max_radius_km: +f.elements.max_radius_km.value, notes: f.elements.notes.value.trim() || null,
+      };
+      S.request = await api("/requests", { method: "POST", body });
+      S.selected = new Set(); S.notes = [];
+      await Promise.all([loadRecs(), loadRequests()]);
+    } catch (err) { $("#reqErr").textContent = err.message; }
+  };
+  if (me.role === "admin") bindAdmin();
+  loadRequests();
+}
+
+async function loadRequests() {
+  try { S.requests = await api("/requests"); } catch (e) { return; }
+  const box = $("#reqList"); if (!box) return;
+  box.innerHTML = S.requests.length ? S.requests.map(r => `
+    <div class="req ${S.request && S.request.id === r.id ? "on" : ""}" data-id="${r.id}" tabindex="0" role="button">
+      <div><b>#${r.id} &middot; ${esc(r.patient_blood_group)}</b> <span class="urg-${esc(r.urgency)}">${esc(r.urgency)}</span><br>
+      <small>${esc(r.hospital_name)}</small></div><span class="pill ${esc(r.status)}">${esc(r.status)} ${r.units_fulfilled}/${r.units_needed}</span>
+    </div>`).join("") : `<p class="hint">No requests yet.</p>`;
+  $$(".req", box).forEach(el => {
+    const open = async () => { S.request = S.requests.find(r => r.id === +el.dataset.id); S.selected = new Set(); await loadRecs(); loadRequests(); };
+    el.onclick = open; el.onkeydown = e => { if (e.key === "Enter") open(); };
+  });
+}
+
+async function loadRecs() {
+  if (!S.request) return;
+  $("#results").innerHTML = `<div class="card empty">Ranking donors...</div>`;
+  try {
+    S.rec = await api(`/requests/${S.request.id}/recommendations?top_k=${S.topK}&mode=${S.mode}`);
+    S.rec.recommendations.forEach(r => S.names[r.donor_id] = `${r.name} (${r.blood_group})`);
+    S.notes = await api(`/requests/${S.request.id}/notifications`);
+  } catch (err) { $("#results").innerHTML = `<div class="card error">${esc(err.message)}</div>`; return; }
+  renderResults();
+}
+
+function renderResults() {
+  const q = S.request, d = S.rec, st = d.stats;
+  const open = q.status === "open";
+  const recs = d.recommendations.map(r => {
+    const total = r.score || 1; const showML = r.ml_probability !== null;
+    const segs = COMP.map(([k, label, col]) => {
+      const w = r.contributions[k] / (r.weighted_score || 1) * 100;  // share of the weighted trust score
+      return `<span style="width:${w.toFixed(1)}%;background:${col}" title="${label}: ${r.contributions[k].toFixed(3)}"></span>`;
+    }).join("");
+    return `<div class="rec ${r.rank <= 3 ? "top" : ""}">
+      <div><div class="rank">${r.rank}</div>${open ? `<input type="checkbox" data-pick="${r.donor_id}" aria-label="Select ${esc(r.name)}" ${S.selected.has(r.donor_id) ? "checked" : ""} style="margin:10px 0 0 9px">` : ""}</div>
+      <div>
+        <div><span class="name">${esc(r.name)}</span><span class="badge">${esc(r.blood_group)}</span>
+          <span class="meta"> &middot; ${esc(r.city || "-")} &middot; ${r.distance_km} km &middot; ${esc(r.availability_status)}</span></div>
+        <div class="bar" aria-label="Score breakdown">${segs}</div>
+        <div class="reasons">${r.explanation.map(x => `<span>${esc(x)}</span>`).join("")}</div>
+        <details><summary>Why this score?</summary><div class="kv">
+          ${COMP.map(([k, label]) => `<div>${label}: <b>${r.component_values[k].toFixed(2)}</b> &times; ${d.weights[k]} = <b>${r.contributions[k].toFixed(3)}</b></div>`).join("")}
+          <div>Response rate: <b>${pct(r.reliability_detail.response_rate)}</b></div>
+          <div>Follow-through: <b>${pct(r.reliability_detail.completion_rate)}</b></div>
+          <div>Recent activity: <b>${pct(r.availability_detail.recent_activity)}</b></div>
+          <div>Response speed: <b>${pct(r.availability_detail.response_speed)}</b></div>
+          ${showML ? `<div>ML success probability: <b>${pct(r.ml_probability)}</b></div>` : ""}
+        </div></details>
+      </div>
+      <div class="score">${(total * 100).toFixed(0)}<small>${d.mode_used === "ml" ? "ML prob" : "score"}</small></div>
+    </div>`;
+  }).join("");
+
+  $("#results").innerHTML = `<section class="card">
+    <div class="toolbar">
+      <div><h2>Request #${q.id}: ${esc(q.patient_blood_group)} &middot; ${esc(q.hospital_name)}</h2>
+        <p class="hint"><span class="urg-${esc(q.urgency)}">${esc(q.urgency)}</span> &middot; ${q.units_needed} unit(s) &middot; radius ${q.max_radius_km} km &middot; ranked in ${d.elapsed_ms} ms</p></div>
+      <div class="grp">
+        <label>Ranking<select id="modeSel">${["auto", "weighted", "ml", "hybrid"].map(m => `<option ${m === S.mode ? "selected" : ""}>${m}</option>`).join("")}</select></label>
+        <label>Show<select id="kSel">${[5, 10, 20, 50].map(k => `<option ${k === S.topK ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+        ${open ? `<button class="small" id="closeBtn">Close request</button>` : ""}
+      </div></div>
+    <div class="funnel">
+      <span class="chip">Consenting donors nearby <b>${st.considered}</b></span><span class="chip">Blood-group compatible <b>${st.compatible}</b></span>
+      <span class="chip">Within radius <b>${st.in_radius}</b></span><span class="chip">Eligible <b>${st.eligible}</b></span>
+      <span class="chip">Mode <b>${esc(d.mode_used)}</b></span></div>
+    ${d.warnings.map(w => `<p class="hint" style="color:var(--warn)">${esc(w)}</p>`).join("")}
+    <div class="legend">${COMP.map(([k, l, c]) => `<span><i style="background:${c}"></i>${l} (${pct(d.weights[k])})</span>`).join("")}</div>
+    ${recs || `<div class="empty">No eligible compatible donors found. Try a larger radius.</div>`}
+    ${open && recs ? `<div class="actionbar"><span class="hint"><b id="selCount">${S.selected.size}</b> selected</span>
+      <button class="primary" id="notifyBtn" ${S.selected.size ? "" : "disabled"}>Notify selected donors</button></div>` : ""}
+  </section>
+  <section class="card"><div class="toolbar"><h2>Outreach &amp; responses</h2><button class="small" id="refreshBtn">Refresh</button></div>
+    <div id="notes">${notesHtml()}</div></section>`;
+
+  $("#modeSel").onchange = e => { S.mode = e.target.value; loadRecs(); };
+  $("#kSel").onchange = e => { S.topK = +e.target.value; loadRecs(); };
+  $("#refreshBtn").onclick = async () => { S.notes = await api(`/requests/${q.id}/notifications`); S.request = await api(`/requests/${q.id}`); renderResults(); loadRequests(); };
+  const cb = $("#closeBtn"); if (cb) cb.onclick = async () => { S.request = await api(`/requests/${q.id}/close`, { method: "POST" }); renderResults(); loadRequests(); };
+  $$("[data-pick]").forEach(el => el.onchange = () => {
+    const id = +el.dataset.pick; el.checked ? S.selected.add(id) : S.selected.delete(id);
+    $("#selCount").textContent = S.selected.size; $("#notifyBtn").disabled = !S.selected.size;
+  });
+  const nb = $("#notifyBtn"); if (nb) nb.onclick = async () => {
+    nb.disabled = true;
+    try {
+      await api(`/requests/${q.id}/notify`, { method: "POST", body: { donor_ids: [...S.selected] } });
+      toast(`${S.selected.size} donor(s) notified`); S.selected = new Set(); await loadRecs();
+    } catch (err) { toast(err.message); nb.disabled = false; }
+  };
+  bindNotes();
+}
+
+function notesHtml() {
+  if (!S.notes.length) return `<p class="hint">No donors contacted yet.</p>`;
+  return S.notes.map(n => {
+    let status = `<span class="status-wait">waiting for reply</span>`, actions = "";
+    if (n.accepted === false) status = `<span class="status-no">declined</span>`;
+    if (n.accepted === true) {
+      if (n.donated === true) status = `<span class="status-yes">donated</span>`;
+      else if (n.donated === false) status = `<span class="status-no">did not show up</span>`;
+      else {
+        status = `<span class="status-yes">accepted</span>`;
+        actions = `<button class="small good" data-don="${n.id}" data-ok="1">Mark donated</button> <button class="small bad" data-don="${n.id}" data-ok="0">No-show</button>`;
+      }
+    }
+    return `<div class="note"><div><b>${esc(S.names[n.donor_id] || "Donor #" + n.donor_id)}</b>
+      <div class="meta">rank ${n.rank_at_send ?? "-"} at send &middot; ${status}</div></div><div>${actions}</div></div>`;
+  }).join("");
+}
+function bindNotes() {
+  $$("[data-don]").forEach(b => b.onclick = async () => {
+    try {
+      await api(`/notifications/${b.dataset.don}/donation`, { method: "POST", body: { completed: b.dataset.ok === "1" } });
+      S.notes = await api(`/requests/${S.request.id}/notifications`); S.request = await api(`/requests/${S.request.id}`);
+      renderResults(); loadRequests();
+    } catch (err) { toast(err.message); }
+  });
+}
+
+// ------------------------------------------------------------------ admin card
+function adminCard() {
+  return `<section class="card"><h2>Admin tools</h2>
+    <p class="hint">Synthetic donors are flagged and can be removed at any time.</p>
+    <div class="row" style="margin-top:10px"><button id="seedBtn">Add 300 demo donors</button><button id="delSynBtn" class="bad">Remove demo donors</button></div>
+    <div class="row" style="margin-top:8px"><button id="statsBtn">Platform stats</button><button id="modelBtn">ML model info</button></div>
+    <pre id="adminOut" hidden></pre></section>`;
+}
+function bindAdmin() {
+  const show = o => { const p = $("#adminOut"); p.hidden = false; p.textContent = JSON.stringify(o, null, 2); };
+  $("#seedBtn").onclick = async () => { try { const r = await api("/admin/seed-demo?n_donors=300", { method: "POST" }); toast(`Inserted ${r.inserted} synthetic donors`); } catch (e) { toast(e.message); } };
+  $("#delSynBtn").onclick = async () => { if (!confirm("Delete all synthetic donors?")) return; try { show(await api("/admin/synthetic-donors", { method: "DELETE" })); } catch (e) { toast(e.message); } };
+  $("#statsBtn").onclick = async () => { try { show(await api("/admin/stats")); } catch (e) { toast(e.message); } };
+  $("#modelBtn").onclick = async () => { try { show(await api("/admin/model")); } catch (e) { toast(e.message); } };
+}
+
+// ------------------------------------------------------------------ donor
+async function donorView() {
+  $("#app").innerHTML = `<div class="single"><div class="card empty">Loading...</div></div>`;
+  let profile = null;
+  try { profile = await api("/donors/me"); } catch (e) { if (!/create your donor profile/i.test(e.message)) { toast(e.message); } }
+  const p = profile || { display_name: me.name, blood_group: "O+", sex: "M", age: 25, weight_kg: 60, city: "Greater Noida", lat: 28.4744, lon: 77.5040, phone: "", consent_to_contact: false, last_donation_date: null };
+  $("#app").innerHTML = `<div class="single">
+    ${profile ? statsCard(profile) : `<div class="card"><h2>Welcome</h2><p class="hint">Create your donor profile to be considered for emergency requests. Only compatible, nearby, eligible and consenting donors are ever contacted.</p></div>`}
+    <section class="card"><h2>${profile ? "Your profile" : "Create donor profile"}</h2>
+      <form id="donorForm">
+        <label>Name<input name="display_name" required maxlength="120" value="${esc(p.display_name)}"></label>
+        <div class="row"><label>Blood group<select name="blood_group">${GROUPS.map(g => `<option ${g === p.blood_group ? "selected" : ""}>${g}</option>`).join("")}</select></label>
+          <label>Sex<select name="sex">${[["M", "Male"], ["F", "Female"], ["O", "Other"]].map(([v, l]) => `<option value="${v}" ${v === p.sex ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>
+        <div class="row"><label>Age<input name="age" type="number" min="16" max="100" required value="${p.age}"></label>
+          <label>Weight (kg)<input name="weight_kg" type="number" min="30" max="250" step="0.5" required value="${p.weight_kg}"></label></div>
+        <label>Location</label><select name="cityPreset">${cityOptions(p.city)}</select>
+        <div class="row"><label>Latitude<input name="lat" type="number" step="any" required value="${p.lat}"></label><label>Longitude<input name="lon" type="number" step="any" required value="${p.lon}"></label></div>
+        <input type="hidden" name="city" value="${esc(p.city)}">
+        <button type="button" class="small ghost" data-geo style="margin-top:8px">Use my current location</button>
+        <div class="row"><label>Phone (optional, never shown to hospitals in rankings)<input name="phone" maxlength="32" value="${esc(p.phone || "")}"></label>
+          <label>Last donation date (optional)<input name="last_donation_date" type="date" value="${p.last_donation_date || ""}"></label></div>
+        <label style="display:flex;align-items:flex-start;margin-top:14px"><input type="checkbox" name="consent_to_contact" ${p.consent_to_contact ? "checked" : ""}>
+          <span>I consent to be contacted for emergency blood requests through approved channels. I understand a doctor decides my final eligibility.</span></label>
+        <button class="primary" style="margin-top:14px">${profile ? "Save changes" : "Create profile"}</button>
+        ${profile ? `<button type="button" class="bad" id="eraseBtn" style="margin-left:8px">Delete my data</button>` : ""}
+        <div class="error" id="donorErr" role="alert"></div>
+      </form></section>
+    ${profile ? `<section class="card"><h2>Availability</h2><p class="hint">Keeping this accurate improves how reliably you are ranked.</p>
+      <div class="seg" id="availSeg">${["available", "flexible", "busy", "unavailable"].map(s => `<button type="button" data-s="${s}" class="${s === profile.availability_status ? "on" : ""}">${s}</button>`).join("")}</div></section>
+      <section class="card"><h2>Requests sent to you</h2><div id="myNotes"><p class="hint">Loading...</p></div></section>` : ""}
+  </div>`;
+  const f = $("#donorForm"); bindCityPreset(f);
+  f.onsubmit = async e => {
+    e.preventDefault(); $("#donorErr").textContent = "";
+    const body = {
+      display_name: f.elements.display_name.value.trim(), blood_group: f.elements.blood_group.value, sex: f.elements.sex.value, age: +f.elements.age.value,
+      weight_kg: +f.elements.weight_kg.value, lat: +f.elements.lat.value, lon: +f.elements.lon.value, city: f.elements.city.value,
+      phone: f.elements.phone.value.trim() || null, consent_to_contact: f.elements.consent_to_contact.checked,
+      last_donation_date: f.elements.last_donation_date.value || null,
+    };
+    try { await api("/donors/me", { method: profile ? "PUT" : "POST", body }); toast("Profile saved"); donorView(); }
+    catch (err) { $("#donorErr").textContent = err.message; }
+  };
+  const er = $("#eraseBtn"); if (er) er.onclick = async () => {
+    if (!confirm("Permanently delete your donor profile and outreach history?")) return;
+    try { await api("/donors/me", { method: "DELETE" }); toast("Your donor data was deleted"); donorView(); } catch (e) { toast(e.message); }
+  };
+  if (profile) {
+    $$("#availSeg button").forEach(b => b.onclick = async () => {
+      try { await api("/donors/me/availability", { method: "PUT", body: { status: b.dataset.s } }); toast("Availability updated"); donorView(); } catch (e) { toast(e.message); }
+    });
+    loadMyNotes();
+  }
+}
+function statsCard(p) {
+  const rate = p.total_contacted ? pct(p.total_responded / p.total_contacted) : "-";
+  return `<div class="card"><h2>Your track record</h2><div class="funnel">
+    <span class="chip">Asked <b>${p.total_contacted}</b></span><span class="chip">Replied <b>${p.total_responded}</b> (${rate})</span>
+    <span class="chip">Accepted <b>${p.total_accepted}</b></span><span class="chip">Donated <b>${p.total_donations}</b></span></div>
+    <p class="hint">Replying quickly - even to decline - and showing up when you accept raises your reliability score.</p></div>`;
+}
+async function loadMyNotes() {
+  let list = []; try { list = await api("/donors/me/notifications"); } catch (e) { return; }
+  const box = $("#myNotes"); if (!box) return;
+  box.innerHTML = list.length ? list.map(n => {
+    let right;
+    if (n.accepted === null) right = `<button class="small good" data-r="1" data-id="${n.id}">Accept</button> <button class="small bad" data-r="0" data-id="${n.id}">Decline</button>`;
+    else right = `<span class="${n.accepted ? "status-yes" : "status-no"}">${n.accepted ? (n.donated === true ? "donated" : n.donated === false ? "no-show" : "accepted") : "declined"}</span>`;
+    return `<div class="note"><div><b>${esc(n.patient_blood_group)} needed &middot; ${esc(n.hospital_name)}</b>
+      <div class="meta"><span class="urg-${esc(n.urgency)}">${esc(n.urgency)}</span> &middot; ${esc(n.city || "")} &middot; ${n.units_needed} unit(s)</div></div><div>${right}</div></div>`;
+  }).join("") : `<p class="hint">No requests yet.</p>`;
+  $$("[data-r]", box).forEach(b => b.onclick = async () => {
+    try { await api(`/notifications/${b.dataset.id}/respond`, { method: "POST", body: { accepted: b.dataset.r === "1" } }); toast("Response sent"); donorView(); }
+    catch (e) { toast(e.message); }
+  });
+}
+
+render();
+</script>
+</body>
+</html>

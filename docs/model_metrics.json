@@ -1,0 +1,44 @@
+{
+  "model_type": "rf",
+  "features": [
+    "response_rate",
+    "completion_rate",
+    "activity",
+    "experience",
+    "status_score",
+    "recent_activity",
+    "speed",
+    "distance_km",
+    "compatibility",
+    "eligibility_margin",
+    "urgency_level",
+    "age",
+    "total_donations"
+  ],
+  "metrics": {
+    "n": 5265,
+    "base_rate": 0.1382716049382716,
+    "roc_auc": 0.7018594971261932,
+    "pr_auc": 0.2798393697679438,
+    "brier": 0.11130703490579319,
+    "log_loss": 0.37217279547732274,
+    "train_rows": 23991,
+    "test_rows": 5265
+  },
+  "feature_importances": {
+    "speed": 0.17230728675071047,
+    "response_rate": 0.1648977495164156,
+    "distance_km": 0.1557891267382303,
+    "status_score": 0.13280470431268815,
+    "recent_activity": 0.0750558199083946,
+    "activity": 0.07238559114521105,
+    "age": 0.05786251860638561,
+    "eligibility_margin": 0.054460766505390376,
+    "completion_rate": 0.03928988674520732,
+    "total_donations": 0.024224026889302645,
+    "experience": 0.022505570587667362,
+    "urgency_level": 0.01882133289887626,
+    "compatibility": 0.009595619395520337
+  },
+  "note": "Metrics are on SYNTHETIC data and demonstrate the pipeline only."
+}

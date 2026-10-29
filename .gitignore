@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets & local state
+.env
+data/*.db
+data/*.sqlite*
+models/*.joblib
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
